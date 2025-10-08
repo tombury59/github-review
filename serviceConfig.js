@@ -148,7 +148,8 @@ export const services = [
     buildApiUrl: (matches) => `https://openlibrary.org/works/${matches[1]}.json`,
     parseResponse: (data) => ({
       title: data.title,
-      description: typeof data.description === 'string' ? data.description.substring(0, 150) + '...' : (data.description?.value || 'Aucune description.').substring(0, 150) + '...',
+      // Description simplifiée. Le CSS gère le tronquage.
+      description: typeof data.description === 'string' ? data.description : (data.description?.value || 'Aucune description.'),
       stats: [
         { label: 'Sujets', value: (data.subjects || []).slice(0, 2).join(', '), icon: '📚' },
         { label: '1ère Publi.', value: data.first_publish_date || 'N/A', icon: '📅' },
@@ -169,7 +170,8 @@ export const services = [
     buildApiUrl: (matches) => `https://www.data.gouv.fr/api/1/datasets/${matches[1]}/`,
     parseResponse: (data) => ({
       title: data.title,
-      description: data.description ? data.description.substring(0, 150) + '...' : 'Aucune description.',
+      // Description simplifiée. Le CSS gère le tronquage.
+      description: data.description || 'Aucune description.',
       stats: [
         { label: 'Organisation', value: data.organization ? data.organization.name : 'N/A', icon: '🏢' },
         { label: 'Licence', value: data.license || 'N/A', icon: '📜' },
@@ -180,4 +182,3 @@ export const services = [
   }
 
 ];
-

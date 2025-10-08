@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Super Hover Info",
-  "version": "2.0",
-  "description": "Affiche des informations sur les liens GitHub, NPM, et plus encore.",
-  "permissions": [ "storage" ],
+  "version": "3.1",
+  "description": "Affiche des informations sur les liens GitHub, NPM, et plus encore, avec un cache persistant et un aperçu générique.",
+  "permissions": [ "storage", "activeTab", "scripting" ],
   "host_permissions": [
     "https://api.github.com/",
-    "https://api.npms.io/"
+    "https://api.npms.io/",
+    "https://crates.io/api/*",
+    "https://repo.packagist.org/*",
+    "https://formulae.brew.sh/api/*",
+    "https://hub.docker.com/v2/*",
+    "https://addons.mozilla.org/api/*",
+    "https://openlibrary.org/*",
+    "https://www.data.gouv.fr/api/*"
   ],
   "background": {
     "service_worker": "background.js",

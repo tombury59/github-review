@@ -1,5 +1,9 @@
+// La carte est créée une seule fois
 let popup = null;
 let hoverTimeout = null;
+const POPUP_WIDTH = 340; // Défini dans popup.css
+const POPUP_HEIGHT_ESTIMATE = 180; // Estimation pour le calcul de position
+const MARGIN = 15; // Marge par rapport au bord de l'écran ou au curseur
 
 async function createPopup() {
   if (popup) return;
@@ -19,9 +23,66 @@ async function createPopup() {
   }
 }
 
+function displayError(message) {
+    if (!popup) return;
+
+    popup.querySelector('#card-title').textContent = 'Erreur de Chargement';
+    popup.querySelector('#card-description').textContent = message || 'Une erreur inconnue est survenue lors de la récupération des données.';
+    popup.querySelector('#card-footer').textContent = 'Vérifiez votre connexion ou la console.';
+
+    const statsContainer = popup.querySelector('.card-content #card-stats');
+    statsContainer.innerHTML = ''; // Vider les stats
+    
+    // Afficher l'état "loaded" pour remplacer le skeleton par le contenu d'erreur
+    popup.classList.remove('loading');
+    popup.classList.add('loaded');
+}
+
+function positionPopup(event) {
+  if (!popup) return;
+
+  const { clientX, clientY } = event;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let finalX, finalY;
+
+  // 1. Positionnement Horizontal (à droite ou à gauche du curseur)
+  if (clientX + POPUP_WIDTH + MARGIN < viewportWidth) {
+    // Assez d'espace à droite: positionner à droite
+    finalX = clientX + MARGIN;
+  } else if (clientX - POPUP_WIDTH - MARGIN > 0) {
+    // Assez d'espace à gauche: positionner à gauche
+    finalX = clientX - POPUP_WIDTH - MARGIN;
+  } else {
+    // Pas assez d'espace, centrer au mieux ou laisser à droite (peut dépasser)
+    finalX = Math.max(MARGIN, viewportWidth - POPUP_WIDTH - MARGIN);
+  }
+  
+  // 2. Positionnement Vertical (en bas ou en haut du curseur)
+  if (clientY + POPUP_HEIGHT_ESTIMATE + MARGIN < viewportHeight) {
+    // Assez d'espace en bas: positionner en bas
+    finalY = clientY + MARGIN;
+  } else if (clientY - POPUP_HEIGHT_ESTIMATE - MARGIN > 0) {
+    // Assez d'espace en haut: positionner en haut
+    finalY = clientY - POPUP_HEIGHT_ESTIMATE - MARGIN;
+  } else {
+    // Pas assez d'espace, positionner en haut de l'écran ou en bas de l'écran au mieux
+    finalY = Math.max(MARGIN, viewportHeight - POPUP_HEIGHT_ESTIMATE - MARGIN);
+  }
+
+  // Appliquer les styles de position
+  popup.style.top = `${finalY}px`;
+  popup.style.left = `${finalX}px`;
+  popup.style.right = 'auto'; // Assurer que 'right' est annulé
+  popup.style.bottom = 'auto'; // Assurer que 'bottom' est annulé
+}
+
+
 function showPopup(event, data) {
   if (!popup) return;
 
+  // 1. Mise à jour du contenu
   popup.querySelector('#card-title').textContent = data.title;
   popup.querySelector('#card-description').textContent = data.description;
   popup.querySelector('#card-footer').textContent = data.footer;
@@ -29,27 +90,28 @@ function showPopup(event, data) {
   const statsContainer = popup.querySelector('.card-content #card-stats');
   statsContainer.innerHTML = ''; // Vider les anciennes stats
   data.stats.forEach(stat => {
+    // Utiliser le toLocaleString en 'fr-FR' si la valeur est un nombre
+    const statValue = (typeof stat.value === 'number' && stat.value.toLocaleString) ? stat.value.toLocaleString('fr-FR') : stat.value;
+    
     statsContainer.innerHTML += `
       <div class="stat-item">
-        <div class="stat-value">${stat.icon} ${stat.value.toLocaleString ? stat.value.toLocaleString('en-US') : stat.value}</div>
+        <div class="stat-value">${stat.icon} ${statValue}</div>
         <div class="stat-label">${stat.label}</div>
       </div>
     `;
   });
 
-  const margin = 20;
-  popup.style.top = `${margin}px`;
-  popup.style.right = `${margin}px`;
-  popup.style.left = 'auto';
-  popup.style.bottom = 'auto';
+  // 2. Positionnement dynamique (fait avant la requête mais mis à jour ici pour le cas de cache)
+  positionPopup(event);
 
-  // Contrôle de l'animation : passer de l'état de chargement à l'état chargé
+  // 3. Contrôle de l'animation : passer de l'état de chargement à l'état chargé
   popup.classList.remove('loading');
   popup.classList.add('loaded');
   popup.classList.add('visible');
 }
 
 function hidePopup() {
+  clearTimeout(hoverTimeout);
   if (popup) {
     popup.classList.remove('visible');
     
@@ -61,6 +123,41 @@ function hidePopup() {
     }, 200); // Doit correspondre à la durée de la transition CSS
   }
 }
+
+function displayLoading(event) {
+    clearTimeout(hoverTimeout);
+    if(popup) {
+        positionPopup(event); 
+        popup.classList.add('loading');
+        popup.classList.remove('loaded');
+        popup.classList.add('visible');
+    }
+}
+
+// Nouvelle fonction pour construire les données d'aperçu génériques localement
+function getGenericLinkInfo(link) {
+    try {
+        const url = new URL(link.href);
+        return {
+            title: url.hostname,
+            description: link.href, // L'URL complète comme description
+            stats: [
+                { label: 'Protocole', value: url.protocol.replace(':', ''), icon: '🌐' },
+                { label: 'Chemin', value: url.pathname.length > 20 ? url.pathname.substring(0, 17) + '...' : url.pathname || '/', icon: '📁' },
+                { label: 'Source', value: 'Lien Externe', icon: '🔗' }
+            ],
+            footer: 'Service non répertorié. Cliquez pour visiter.'
+        };
+    } catch (e) {
+        return {
+            title: 'Lien Invalide',
+            description: link.href || 'URL introuvable.',
+            stats: [],
+            footer: 'Impossible d\'analyser l\'URL.'
+        };
+    }
+}
+
 
 async function scanAndAttachListeners() {
   try {
@@ -84,31 +181,32 @@ async function scanAndAttachListeners() {
           break; // Arrêter dès qu'un service est trouvé
         }
       }
-
-      // Attacher les écouteurs d'événements
+      
       link.addEventListener('mouseenter', (event) => {
-        clearTimeout(hoverTimeout);
-        if (chrome.runtime?.id) {
-          if (matchedService) {
-            // Si un service correspond, utiliser la logique existante
+        displayLoading(event);
+
+        if (matchedService) {
+            // Cas 1 : Service connu (GitHub, NPM, etc.)
             chrome.runtime.sendMessage({ action: 'getData', serviceName: matchedService.name, matches }, (response) => {
-              if (!chrome.runtime.lastError && response?.success) {
-                hoverTimeout = setTimeout(() => showPopup(event, response.data), 300);
+              if (!chrome.runtime.lastError) {
+                if (response?.success) {
+                  hoverTimeout = setTimeout(() => showPopup(event, response.data), 300);
+                } else {
+                  hoverTimeout = setTimeout(() => {
+                      displayError(response.error);
+                      popup.classList.add('visible');
+                  }, 300);
+                }
               }
             });
-          } else {
-            // Sinon, demander un aperçu générique de la page
-            chrome.runtime.sendMessage({ action: 'getPageOverview', url: link.href }, (response) => {
-               if (!chrome.runtime.lastError && response?.success) {
-                  hoverTimeout = setTimeout(() => showPopup(event, response.data), 300);
-               }
-            });
-          }
+        } else {
+            // Cas 2 : Service inconnu (Afficher un aperçu du lien localement)
+            const genericData = getGenericLinkInfo(link);
+            hoverTimeout = setTimeout(() => showPopup(event, genericData), 300);
         }
       });
 
       link.addEventListener('mouseleave', () => {
-        clearTimeout(hoverTimeout);
         hidePopup();
       });
     });
@@ -117,8 +215,10 @@ async function scanAndAttachListeners() {
   }
 }
 
-const observer = new MutationObserver(scanAndAttachListeners);
+// Initialisation
 createPopup();
 scanAndAttachListeners();
-observer.observe(document.body, { childList: true, subtree: true });
 
+// S'assurer que le script scanne les nouveaux éléments ajoutés dynamiquement
+const observer = new MutationObserver(scanAndAttachListeners);
+observer.observe(document.body, { childList: true, subtree: true });
