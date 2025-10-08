@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "GitHub Hover Info",
+  "version": "1.0",
+  "description": "Affiche les informations d'un dépôt GitHub au survol d'un lien.",
+  "permissions": [
+    "storage" 
+  ],
+  "host_permissions": [
+    "https://api.github.com/"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["popup.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
