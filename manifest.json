@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "GitHub Hover Info",
-  "version": "1.0",
-  "description": "Affiche les informations d'un dépôt GitHub au survol d'un lien.",
-  "permissions": [
-    "storage" 
-  ],
+  "name": "Super Hover Info",
+  "version": "2.0",
+  "description": "Affiche des informations sur les liens GitHub, NPM, et plus encore.",
+  "permissions": [ "storage" ],
   "host_permissions": [
-    "https://api.github.com/"
+    "https://api.github.com/",
+    "https://api.npms.io/"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -21,7 +21,10 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["popup.html"],
+      "resources": [
+        "popup.html",
+        "serviceConfig.js" 
+      ],
       "matches": ["<all_urls>"]
     }
   ]

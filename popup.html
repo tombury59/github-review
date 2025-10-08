@@ -4,17 +4,33 @@
   <meta charset="utf-8">
 </head>
 <body>
-  <div id="github-popup-card">
-    <div class="repo-name" id="repo-name">Nom du Dépôt</div>
-    <div class="repo-desc" id="repo-desc">Description du dépôt...</div>
-    <div class="stats">
-      <span>⭐ <strong id="repo-stars">...</strong></span>
-      <span>🍴 <strong id="repo-forks">...</strong></span>
-      <span>⚫ <strong id="repo-issues">...</strong></span>
+  <!-- La carte principale commence à l'état "loading" -->
+  <div id="super-hover-card" class="loading">
+    
+    <!-- Structure pour l'animation de chargement (Skeleton) -->
+    <div class="skeleton-container">
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-desc-1"></div>
+      <div class="skeleton skeleton-desc-2"></div>
+      <div class="stats-skeleton">
+        <div class="skeleton skeleton-stat"></div>
+        <div class="skeleton skeleton-stat"></div>
+        <div class="skeleton skeleton-stat"></div>
+      </div>
     </div>
-    <div class="last-commit" id="repo-last-commit">
-      Dernière mise à jour : ...
+    
+    <!-- Contenu réel (caché au début par le CSS) -->
+    <div class="card-content">
+      <div class="card-header">
+        <span id="card-title"></span>
+      </div>
+      <div id="card-description"></div>
+      <div id="card-stats">
+        <!-- Les statistiques seront injectées ici par le JS -->
+      </div>
+      <div id="card-footer"></div>
     </div>
+
   </div>
 </body>
 </html>

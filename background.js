@@ -1,37 +1,38 @@
-// Fonction pour récupérer les données de l'API GitHub
-async function getRepoData(owner, repo) {
-  const cacheKey = `repo-${owner}-${repo}`;
-  // Vérifier si les données sont dans le cache et pas trop vieilles (15 minutes)
-  const cached = await chrome.storage.local.get(cacheKey);
-  const now = new Date().getTime();
+import { services } from './serviceConfig.js';
 
-  if (cached[cacheKey] && (now - cached[cacheKey].timestamp < 15 * 60 * 1000)) {
-    console.log("Données servies depuis le cache");
-    return cached[cacheKey].data;
-  }
+const inMemoryCache = new Map();
 
-  // Si pas dans le cache, appeler l'API
-  console.log("Appel à l'API GitHub");
-  const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-  if (!response.ok) {
-    throw new Error('Réponse réseau non OK');
+async function getData(serviceName, matches) {
+  const service = services.find(s => s.name === serviceName);
+  if (!service) throw new Error(`Service inconnu: ${serviceName}`);
+
+  const apiUrl = service.buildApiUrl(matches);
+  const cacheKey = `${service.name}-${apiUrl}`;
+  const now = Date.now();
+
+  // 1. Check cache en mémoire
+  if (inMemoryCache.has(cacheKey) && (now - inMemoryCache.get(cacheKey).timestamp < 15 * 60 * 1000)) {
+    return inMemoryCache.get(cacheKey).data;
   }
-  const data = await response.json();
   
-  // Mettre les nouvelles données en cache
-  await chrome.storage.local.set({ [cacheKey]: { data: data, timestamp: now } });
+  // 2. Appel API
+  const response = await fetch(apiUrl);
+  if (!response.ok) throw new Error('API request failed');
+  
+  const rawData = await response.json();
+  const parsedData = service.parseResponse(rawData);
+  
+  // 3. Mise en cache
+  inMemoryCache.set(cacheKey, { data: parsedData, timestamp: now });
 
-  return data;
+  return parsedData;
 }
 
-// Écouter les messages venant du content_script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'getRepoInfo') {
-    getRepoData(request.owner, request.repo)
-      .then(data => sendResponse({ success: true, data: data }))
+  if (request.action === 'getData') {
+    getData(request.serviceName, request.matches)
+      .then(data => sendResponse({ success: true, data }))
       .catch(error => sendResponse({ success: false, error: error.message }));
-    
-    // Indique que la réponse sera envoyée de manière asynchrone
-    return true; 
+    return true; // Réponse asynchrone
   }
 });
